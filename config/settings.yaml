@@ -1,0 +1,39 @@
+# ============================================================
+# Personal AI Agent Assistant — Settings
+# ============================================================
+# These are default values. Override any of these via .env.
+# Environment variables always take precedence over this file.
+# ============================================================
+
+agent:
+  name: "Jarvis"
+  safe_mode: true
+  max_iterations: 10
+  verbose: false
+
+llm:
+  provider: "ollama"           # gemini | openai | anthropic | ollama
+  model: "llama3.2"            # Ollama model to use (must be pulled locally)
+  temperature: 0.7
+  max_tokens: 8192
+  ollama_base_url: "http://localhost:11434"
+
+  # Default model per provider (used when model is empty)
+  provider_defaults:
+    gemini: "gemini-2.0-flash"
+    openai: "gpt-4o-mini"
+    anthropic: "claude-3-5-haiku-20241022"
+    ollama: "llama3.2"
+
+storage:
+  workspace_dir: ""            # Defaults to ~/assistant-workspace
+  log_dir: "~/.assistant/logs"
+  memory_dir: "~/.assistant/memory"
+
+ui:
+  port: 8000
+  auto_open_browser: true
+
+security:
+  allowed_domains: []
+  rate_limit_rpm: 60

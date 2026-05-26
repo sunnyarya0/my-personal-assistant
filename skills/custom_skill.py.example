@@ -1,0 +1,66 @@
+"""
+skills/custom_skill.py.example
+==============================
+Reference template and tutorial for writing custom skills for the Personal AI Agent Assistant.
+
+This file serves as a guide for developers. Any `.py` file placed inside
+the `skills/` directory (except files starting with an underscore) is
+automatically discovered, imported, and registered at startup.
+
+Step-by-Step Instructions
+-------------------------
+1. Place a new `.py` file in the `skills/` folder (e.g. `skills/my_tool.py`).
+2. Import `register_tool` from `core.registry`.
+3. Annotate your function with `@register_tool`. Specify description and destructive flag if needed.
+4. Document the function fully with docstrings and type annotations.
+   - The docstring is parsed to build parameter schemas for the LLM.
+   - Use Google-style docstrings (`param: description`) for per-parameter details.
+"""
+
+from __future__ import annotations
+
+from core.registry import register_tool
+
+
+# --- Example 1: Standard read-only utility ---
+
+@register_tool(description="Summarise or manipulate input text in a specific format.")
+def format_text(text: str, uppercase: bool = False) -> str:
+    """
+    Format a text string, optionally transforming it to uppercase.
+
+    Args:
+        text: The input text to process.
+        uppercase: If True, converts the output to uppercase.
+
+    Returns:
+        The formatted string.
+    """
+    processed = text.strip()
+    if uppercase:
+        processed = processed.upper()
+    return f"Processed: {processed}"
+
+
+# --- Example 2: Destructive utility (triggers Safe Mode confirmation) ---
+
+@register_tool(
+    name="system_reset",
+    description="Resets system workspace data. High risk.",
+    destructive=True
+)
+def reset_workspace_data(confirm_code: str) -> str:
+    """
+    Wipe data or reset workspaces. Requires Safe Mode y/n verification.
+
+    Args:
+        confirm_code: Safety verification pass-code (must match 'RESET').
+
+    Returns:
+        Reset status message.
+    """
+    if confirm_code != "RESET":
+        return "Aborted: Invalid safety confirmation code."
+        
+    # [Rest of high-risk operations go here...]
+    return "Workspace successfully reset."

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Personal AI Agent Assistant Dashboard</title>
+    
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Link CSS -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- ========================================== -->
+        <!-- LEFT COLUMN: SIDEBAR (Memories & Logs)      -->
+        <!-- ========================================== -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <h2>🧠 Semantic Memory</h2>
+                <div class="memory-search-box">
+                    <input type="text" id="memory-search" placeholder="Semantic search memories..." autocomplete="off">
+                    <button id="memory-search-btn" class="icon-btn">🔍</button>
+                </div>
+            </div>
+            
+            <div class="memory-list-container">
+                <div class="list-header">
+                    <span>Stored Memories</span>
+                    <button id="refresh-memories-btn" class="text-btn">Refresh</button>
+                </div>
+                <div id="memory-list" class="scrollable-list">
+                    <!-- Loaded dynamically -->
+                    <div class="list-placeholder">No memories loaded.</div>
+                </div>
+            </div>
+
+            <div class="history-list-container">
+                <div class="list-header">
+                    <span>📋 Task Log History</span>
+                </div>
+                <div id="task-history-list" class="scrollable-list">
+                    <!-- Loaded dynamically -->
+                    <div class="list-placeholder">No past runs found.</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========================================== -->
+        <!-- MIDDLE COLUMN: CHAT PANEL                  -->
+        <!-- ========================================== -->
+        <main class="chat-container glass-panel">
+            <header class="chat-header">
+                <div class="agent-profile">
+                    <div class="status-indicator">
+                        <div class="status-ring"></div>
+                        <div class="status-dot"></div>
+                    </div>
+                    <div class="agent-info">
+                        <h1 id="agent-display-name">Jarvis</h1>
+                        <span id="agent-status-text" class="status-text">Idle & Ready</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="config-btn" class="icon-btn" title="View Settings">⚙️</button>
+                </div>
+            </header>
+
+            <section id="chat-messages" class="chat-messages-area scrollbar-styled">
+                <div class="chat-bubble assistant-bubble">
+                    <div class="bubble-avatar">🤖</div>
+                    <div class="bubble-content">
+                        <p>Hello! I am your local ReAct AI Agent. Ask me a complex task, and watch me plan, execute tools, and retrieve memories to help you!</p>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="chat-footer">
+                <div class="input-glow-wrapper">
+                    <form id="chat-form" class="chat-input-form">
+                        <input type="text" id="chat-input" placeholder="Give the agent a goal..." autocomplete="off" required>
+                        <button type="submit" id="send-btn" class="send-btn">
+                            <span class="send-text">Execute</span>
+                            <span class="send-icon">🚀</span>
+                        </button>
+                    </form>
+                </div>
+            </footer>
+        </main>
+
+        <!-- ========================================== -->
+        <!-- RIGHT COLUMN: LIVE REASONING CONSOLE       -->
+        <!-- ========================================== -->
+        <section class="reasoning-console glass-panel">
+            <div class="console-header">
+                <h2>📝 Live Reasoning Console</h2>
+                <div class="console-actions">
+                    <button id="clear-console-btn" class="text-btn">Clear Trace</button>
+                </div>
+            </div>
+            
+            <div id="reasoning-trace" class="trace-area scrollbar-styled">
+                <!-- Streaming logs will appear here in real-time -->
+                <div class="trace-placeholder">
+                    <div class="placeholder-icon">⚡</div>
+                    <h3>Reasoning Trace Offline</h3>
+                    <p>Enter a prompt in the chat box to see my Plan → Act → Observe thinking loop live.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Configuration Modal overlay -->
+    <div id="config-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>⚙️ Assistant Settings</h3>
+                <button id="close-modal-btn" class="icon-btn">✕</button>
+            </div>
+            <div id="config-details" class="modal-body">
+                <!-- Loaded dynamically -->
+                <div class="loading">Querying active server configuration...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="index.js"></script>
+</body>
+</html>
