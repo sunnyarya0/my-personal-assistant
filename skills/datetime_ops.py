@@ -7,6 +7,7 @@ Calendar and date/time tracking skill for the Personal AI Agent Assistant.
 from __future__ import annotations
 
 import datetime
+
 from core.llm_client import get_llm_client
 from core.registry import register_tool
 
@@ -27,7 +28,12 @@ def get_current_datetime() -> str:
     )
 
 
-@register_tool(description="Resolve a natural language date expression (e.g. 'tomorrow', 'next Monday') to YYYY-MM-DD.")
+@register_tool(
+    description=(
+        "Resolve a natural language date expression "
+        "(e.g. 'tomorrow', 'next Monday') to YYYY-MM-DD."
+    )
+)
 def parse_date(natural_language: str) -> str:
     """
     Translate natural language date references to absolute YYYY-MM-DD ISO format.

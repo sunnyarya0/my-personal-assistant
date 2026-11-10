@@ -47,12 +47,14 @@ logger = logging.getLogger(__name__)
 # Data models
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MemoryEntry:
     """A single memory unit stored in the long-term store."""
+
     id: str
     content: str
-    timestamp: str                          # ISO-8601 UTC
+    timestamp: str  # ISO-8601 UTC
     tags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -62,7 +64,7 @@ class MemoryEntry:
         content: str,
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> "MemoryEntry":
+    ) -> MemoryEntry:
         return cls(
             id=str(uuid.uuid4()),
             content=content,
@@ -84,8 +86,9 @@ class MemoryEntry:
 @dataclass
 class SearchResult:
     """A memory entry returned by a semantic search query."""
+
     entry: MemoryEntry
-    score: float          # Cosine similarity [0, 1] — higher = more relevant
+    score: float  # Cosine similarity [0, 1] — higher = more relevant
 
     @property
     def content(self) -> str:
@@ -99,6 +102,7 @@ class SearchResult:
 # ---------------------------------------------------------------------------
 # Short-term memory (in-process ring buffer)
 # ---------------------------------------------------------------------------
+
 
 class ShortTermMemory:
     """
@@ -133,6 +137,7 @@ class ShortTermMemory:
 # Long-term memory (ChromaDB vector store)
 # ---------------------------------------------------------------------------
 
+
 class LongTermMemory:
     """
     Persistent semantic memory backed by ChromaDB.
@@ -150,7 +155,7 @@ class LongTermMemory:
         self._collection = None
         self._embedder = get_embedder()
 
-    def _ensure_connected(self):
+    def _ensure_connected(self) -> None:
         """Lazy-init ChromaDB client and collection."""
         if self._client is not None:
             return
@@ -169,9 +174,7 @@ class LongTermMemory:
                 self._collection.count(),
             )
         except ImportError as exc:
-            raise ImportError(
-                "chromadb is not installed. Run: pip install chromadb"
-            ) from exc
+            raise ImportError("chromadb is not installed. Run: pip install chromadb") from exc
 
     # ------------------------------------------------------------------
     # Write operations
@@ -297,11 +300,7 @@ class LongTermMemory:
                 content=doc,
                 timestamp=meta.get("timestamp", ""),
                 tags=tags,
-                metadata={
-                    k[5:]: v
-                    for k, v in meta.items()
-                    if k.startswith("meta_")
-                },
+                metadata={k[5:]: v for k, v in meta.items() if k.startswith("meta_")},
             )
             results.append(SearchResult(entry=entry, score=score))
 
@@ -334,13 +333,15 @@ class LongTermMemory:
             meta = raw["metadatas"][i]
             tags_str = meta.get("tags", "")
             tags = [t for t in tags_str.split(",") if t]
-            entries.append(MemoryEntry(
-                id=raw["ids"][i],
-                content=doc,
-                timestamp=meta.get("timestamp", ""),
-                tags=tags,
-                metadata={k[5:]: v for k, v in meta.items() if k.startswith("meta_")},
-            ))
+            entries.append(
+                MemoryEntry(
+                    id=raw["ids"][i],
+                    content=doc,
+                    timestamp=meta.get("timestamp", ""),
+                    tags=tags,
+                    metadata={k[5:]: v for k, v in meta.items() if k.startswith("meta_")},
+                )
+            )
 
         # Sort by timestamp descending (most recent first)
         entries.sort(key=lambda e: e.timestamp, reverse=True)
@@ -355,6 +356,7 @@ class LongTermMemory:
 # ---------------------------------------------------------------------------
 # Unified MemoryStore (facade over both layers)
 # ---------------------------------------------------------------------------
+
 
 class MemoryStore:
     """
@@ -449,7 +451,7 @@ class MemoryStore:
         lines = ["## Relevant Memories From Previous Sessions"]
         for r in results:
             tag_str = f" [{', '.join(r.entry.tags)}]" if r.entry.tags else ""
-            ts = r.entry.timestamp[:10]   # Just the date
+            ts = r.entry.timestamp[:10]  # Just the date
             lines.append(f"- [{ts}{tag_str}] {r.content}  (relevance: {r.score:.2f})")
         lines.append("")
         return "\n".join(lines)

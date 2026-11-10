@@ -20,14 +20,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.agent import Agent, AgentResult, AgentStep
+from core.agent import Agent, AgentResult
 from core.prompt import AgentAction, build_system_prompt, parse_llm_response
 from core.registry import ToolRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_llm_response(
     thought: str = "I know the answer.",
@@ -36,22 +36,26 @@ def make_llm_response(
     final_answer: str | None = "42",
 ) -> str:
     """Build a JSON string the LLM would return."""
-    return json.dumps({
-        "thought": thought,
-        "action": action,
-        "action_input": action_input or {},
-        "final_answer": final_answer,
-    })
+    return json.dumps(
+        {
+            "thought": thought,
+            "action": action,
+            "action_input": action_input or {},
+            "final_answer": final_answer,
+        }
+    )
 
 
 def make_tool_call_response(tool: str, inputs: dict, thought: str = "Let me use a tool.") -> str:
     """Build a JSON response that calls a tool."""
-    return json.dumps({
-        "thought": thought,
-        "action": tool,
-        "action_input": inputs,
-        "final_answer": None,
-    })
+    return json.dumps(
+        {
+            "thought": thought,
+            "action": tool,
+            "action_input": inputs,
+            "final_answer": None,
+        }
+    )
 
 
 def make_agent_with_mock_llm(
@@ -82,6 +86,7 @@ def make_agent_with_mock_llm(
 # ---------------------------------------------------------------------------
 # parse_llm_response tests
 # ---------------------------------------------------------------------------
+
 
 class TestParseLLMResponse:
     def test_parse_clean_final_answer(self) -> None:
@@ -124,6 +129,7 @@ class TestParseLLMResponse:
 # AgentAction tests
 # ---------------------------------------------------------------------------
 
+
 class TestAgentAction:
     def test_is_done_true_when_final_answer_set(self) -> None:
         a = AgentAction(thought="t", action=None, action_input={}, final_answer="done")
@@ -137,6 +143,7 @@ class TestAgentAction:
 # ---------------------------------------------------------------------------
 # Agent single-step (no tools needed)
 # ---------------------------------------------------------------------------
+
 
 class TestAgentSingleStep:
     def test_returns_final_answer_immediately(self) -> None:
@@ -163,6 +170,7 @@ class TestAgentSingleStep:
 # ---------------------------------------------------------------------------
 # Agent multi-step (with tools)
 # ---------------------------------------------------------------------------
+
 
 class TestAgentMultiStep:
     def test_calls_tool_then_gives_answer(self) -> None:
@@ -238,6 +246,7 @@ class TestAgentMultiStep:
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 class TestAgentErrorHandling:
     def test_unknown_tool_returns_error_observation(self) -> None:
         reg = ToolRegistry()  # Empty — no tools
@@ -287,9 +296,7 @@ class TestAgentErrorHandling:
 
     def test_parse_failure_uses_raw_as_answer(self) -> None:
         """If LLM returns non-JSON, the raw text becomes the final answer."""
-        agent = make_agent_with_mock_llm(
-            responses=["The answer is simply 42, my friend."]
-        )
+        agent = make_agent_with_mock_llm(responses=["The answer is simply 42, my friend."])
         result = agent.run("What is the answer to life?")
 
         assert result.success is True
@@ -318,6 +325,7 @@ class TestAgentErrorHandling:
 # ---------------------------------------------------------------------------
 # Safe mode
 # ---------------------------------------------------------------------------
+
 
 class TestSafeMode:
     def test_safe_mode_blocks_destructive_tool(self) -> None:
@@ -366,6 +374,7 @@ class TestSafeMode:
 # ---------------------------------------------------------------------------
 # System prompt
 # ---------------------------------------------------------------------------
+
 
 class TestSystemPrompt:
     def test_prompt_includes_tool_names(self) -> None:

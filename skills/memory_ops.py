@@ -16,7 +16,9 @@ from core.memory import get_memory_store
 from core.registry import register_tool
 
 
-@register_tool(description="Save an important piece of information to long-term memory for future sessions.")
+@register_tool(
+    description="Save an important piece of information to long-term memory for future sessions."
+)
 def remember(content: str, tags: str = "") -> str:
     """
     Persist a fact, preference, or note to long-term memory.

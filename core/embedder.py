@@ -21,7 +21,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +39,12 @@ class LocalEmbedder:
         self.model_name = model_name
         self._model = None  # lazy-loaded
 
-    def _load(self):
+    def _load(self) -> SentenceTransformer:
         """Load the sentence-transformers model (first call only)."""
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer  # type: ignore
+
                 logger.info("Loading embedding model: %s", self.model_name)
                 self._model = SentenceTransformer(self.model_name)
                 logger.info("Embedding model loaded (dim=%d)", self.dimension)
@@ -104,7 +105,8 @@ class LocalEmbedder:
             Cosine similarity score in range [-1, 1] (higher = more similar).
         """
         import math
-        dot = sum(a * b for a, b in zip(vec_a, vec_b))
+
+        dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=False))
         norm_a = math.sqrt(sum(a * a for a in vec_a))
         norm_b = math.sqrt(sum(b * b for b in vec_b))
         if norm_a == 0 or norm_b == 0:

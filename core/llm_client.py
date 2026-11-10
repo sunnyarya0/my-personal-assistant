@@ -35,14 +35,16 @@ console = Console()
 # Response dataclass — provider-agnostic output format
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LLMResponse:
     """Standardised response object returned by all LLM clients."""
-    content: str                          # The text response from the model
-    model: str                            # Model that generated the response
-    provider: str                         # Provider that was used
-    input_tokens: int = 0                 # Approximate input token count
-    output_tokens: int = 0                # Approximate output token count
+
+    content: str  # The text response from the model
+    model: str  # Model that generated the response
+    provider: str  # Provider that was used
+    input_tokens: int = 0  # Approximate input token count
+    output_tokens: int = 0  # Approximate output token count
     raw: Any = field(default=None, repr=False)  # Raw provider response (for debugging)
 
     @property
@@ -53,6 +55,7 @@ class LLMResponse:
 # ---------------------------------------------------------------------------
 # Abstract base class
 # ---------------------------------------------------------------------------
+
 
 class BaseLLMClient(abc.ABC):
     """
@@ -70,21 +73,27 @@ class BaseLLMClient(abc.ABC):
         wrapped with exponential backoff retry logic for resilience.
         """
         import random
+
         max_retries = 3
         initial_delay = 1.0
-        
+
         for attempt in range(1, max_retries + 2):
             try:
                 return self._chat_internal(prompt, system_prompt=system_prompt)
             except Exception as exc:
                 if attempt > max_retries:
                     raise exc
-                
+
                 err_str = str(exc).lower()
                 # Block repeating known credential errors
-                if "401" in err_str or "403" in err_str or "api key" in err_str or "credentials" in err_str:
+                if (
+                    "401" in err_str
+                    or "403" in err_str
+                    or "api key" in err_str
+                    or "credentials" in err_str
+                ):
                     raise exc
-                
+
                 delay = initial_delay * (2 ** (attempt - 1)) + random.uniform(0.1, 0.5)
                 console.print(
                     f"[yellow]⚠️  LLM call failed (attempt {attempt}/{max_retries + 1}): {exc}. "
@@ -117,6 +126,7 @@ class BaseLLMClient(abc.ABC):
 # Gemini client
 # ---------------------------------------------------------------------------
 
+
 class GeminiClient(BaseLLMClient):
     """Google Gemini via google-generativeai SDK."""
 
@@ -124,6 +134,7 @@ class GeminiClient(BaseLLMClient):
         super().__init__(model, temperature, max_tokens)
         try:
             import google.generativeai as genai  # type: ignore
+
             genai.configure(api_key=api_key)
             self._genai = genai
             self._client = genai.GenerativeModel(
@@ -135,8 +146,7 @@ class GeminiClient(BaseLLMClient):
             )
         except ImportError as exc:
             raise ImportError(
-                "google-generativeai is not installed. "
-                "Run: pip install google-generativeai"
+                "google-generativeai is not installed. " "Run: pip install google-generativeai"
             ) from exc
 
     def _chat_internal(self, prompt: str, system_prompt: str = "") -> LLMResponse:
@@ -158,6 +168,7 @@ class GeminiClient(BaseLLMClient):
 # OpenAI client
 # ---------------------------------------------------------------------------
 
+
 class OpenAIClient(BaseLLMClient):
     """OpenAI GPT models via official openai SDK."""
 
@@ -165,11 +176,10 @@ class OpenAIClient(BaseLLMClient):
         super().__init__(model, temperature, max_tokens)
         try:
             from openai import OpenAI  # type: ignore
+
             self._client = OpenAI(api_key=api_key)
         except ImportError as exc:
-            raise ImportError(
-                "openai is not installed. Run: pip install openai"
-            ) from exc
+            raise ImportError("openai is not installed. Run: pip install openai") from exc
 
     def _chat_internal(self, prompt: str, system_prompt: str = "") -> LLMResponse:
         messages = []
@@ -198,6 +208,7 @@ class OpenAIClient(BaseLLMClient):
 # Anthropic client
 # ---------------------------------------------------------------------------
 
+
 class AnthropicClient(BaseLLMClient):
     """Anthropic Claude models via official anthropic SDK."""
 
@@ -205,11 +216,10 @@ class AnthropicClient(BaseLLMClient):
         super().__init__(model, temperature, max_tokens)
         try:
             import anthropic  # type: ignore
+
             self._client = anthropic.Anthropic(api_key=api_key)
         except ImportError as exc:
-            raise ImportError(
-                "anthropic is not installed. Run: pip install anthropic"
-            ) from exc
+            raise ImportError("anthropic is not installed. Run: pip install anthropic") from exc
 
     def _chat_internal(self, prompt: str, system_prompt: str = "") -> LLMResponse:
         kwargs: dict[str, Any] = {
@@ -237,6 +247,7 @@ class AnthropicClient(BaseLLMClient):
 # Ollama client
 # ---------------------------------------------------------------------------
 
+
 class OllamaClient(BaseLLMClient):
     """Local models via Ollama (no API key required)."""
 
@@ -244,12 +255,11 @@ class OllamaClient(BaseLLMClient):
         super().__init__(model, temperature, max_tokens)
         try:
             import ollama  # type: ignore
+
             self._ollama = ollama
             self._base_url = base_url
         except ImportError as exc:
-            raise ImportError(
-                "ollama is not installed. Run: pip install ollama"
-            ) from exc
+            raise ImportError("ollama is not installed. Run: pip install ollama") from exc
 
     def _chat_internal(self, prompt: str, system_prompt: str = "") -> LLMResponse:
         messages = []
@@ -262,7 +272,11 @@ class OllamaClient(BaseLLMClient):
             messages=messages,
             options={"temperature": self.temperature, "num_predict": self.max_tokens},
         )
-        content = response["message"]["content"] if isinstance(response, dict) else response.message.content
+        content = (
+            response["message"]["content"]
+            if isinstance(response, dict)
+            else response.message.content
+        )
         return LLMResponse(
             content=content,
             model=self.model,
@@ -274,6 +288,7 @@ class OllamaClient(BaseLLMClient):
 # ---------------------------------------------------------------------------
 # Factory function — the main public API
 # ---------------------------------------------------------------------------
+
 
 def get_llm_client(
     provider: LLMProvider | None = None,
@@ -340,7 +355,7 @@ def ping_llm() -> bool:
     if ok:
         console.print(f"[green]✓ LLM provider is reachable[/green] ({elapsed:.2f}s)")
     else:
-        console.print(f"[red]✗ LLM provider did not respond correctly[/red]")
+        console.print("[red]✗ LLM provider did not respond correctly[/red]")
     return ok
 
 

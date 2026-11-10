@@ -19,13 +19,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from core.config import PROVIDER_DEFAULTS, Settings
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_settings(**env_overrides: str) -> Settings:
     """Create a fresh Settings instance with specific env vars set."""
@@ -49,6 +50,7 @@ def make_settings(**env_overrides: str) -> Settings:
 # Provider validation
 # ---------------------------------------------------------------------------
 
+
 class TestProviderValidation:
     def test_valid_providers_accepted(self) -> None:
         for provider in ("gemini", "openai", "anthropic", "ollama"):
@@ -56,7 +58,7 @@ class TestProviderValidation:
             assert s.llm_provider == provider
 
     def test_invalid_provider_raises(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             make_settings(LLM_PROVIDER="unknown-provider")
 
     def test_provider_is_case_insensitive(self) -> None:
@@ -68,13 +70,14 @@ class TestProviderValidation:
 # Model resolution
 # ---------------------------------------------------------------------------
 
+
 class TestModelResolution:
     def test_empty_model_resolves_to_provider_default(self) -> None:
         for provider, expected_model in PROVIDER_DEFAULTS.items():
             s = make_settings(LLM_PROVIDER=provider, LLM_MODEL="")
-            assert s.llm_model == expected_model, (
-                f"Provider {provider}: expected {expected_model}, got {s.llm_model}"
-            )
+            assert (
+                s.llm_model == expected_model
+            ), f"Provider {provider}: expected {expected_model}, got {s.llm_model}"
 
     def test_explicit_model_is_preserved(self) -> None:
         s = make_settings(LLM_PROVIDER="openai", LLM_MODEL="gpt-4o")
@@ -84,6 +87,7 @@ class TestModelResolution:
 # ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
+
 
 class TestPathResolution:
     def test_workspace_defaults_to_home_dir(self) -> None:
@@ -104,6 +108,7 @@ class TestPathResolution:
 # ---------------------------------------------------------------------------
 # API key validation
 # ---------------------------------------------------------------------------
+
 
 class TestApiKeyValidation:
     def test_missing_api_key_raises_for_non_ollama(self) -> None:
@@ -126,6 +131,7 @@ class TestApiKeyValidation:
 # Agent settings
 # ---------------------------------------------------------------------------
 
+
 class TestAgentSettings:
     def test_safe_mode_default_is_true(self) -> None:
         s = make_settings(SAFE_MODE="true")
@@ -147,6 +153,7 @@ class TestAgentSettings:
 # ---------------------------------------------------------------------------
 # UI settings
 # ---------------------------------------------------------------------------
+
 
 class TestUISettings:
     def test_default_port(self) -> None:

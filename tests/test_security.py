@@ -6,18 +6,15 @@ Unit and integration tests for the security hardening changes in Sprint 6.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from core.config import settings
-from core.agent import _redact_secrets, AgentResult
+from core.agent import _redact_secrets
 from skills.system_ops import _is_command_safe, run_command
 from skills.web_search import _is_domain_allowed, fetch_webpage
-from UI.server import app, rate_limiter, rate_limit_records
+from UI.server import app, rate_limit_records
 
 
 class TestCommandSanitizer:
@@ -84,13 +81,13 @@ class TestScraperDomainFilter:
     def test_restricted_allowed_domains(self) -> None:
         with patch("skills.web_search.settings") as mock_settings:
             mock_settings.allowed_domains = ["wikipedia.org", "github.com"]
-            
+
             # Direct and parent domain match
             assert _is_domain_allowed("https://wikipedia.org")
             assert _is_domain_allowed("https://en.wikipedia.org/wiki/Main_Page")
             assert _is_domain_allowed("https://github.com/profile")
             assert _is_domain_allowed("github.com/sunnyarya")
-            
+
             # Non-matching domain
             assert not _is_domain_allowed("https://google.com")
             assert not _is_domain_allowed("https://yahoo.com/news")
@@ -116,12 +113,10 @@ class TestLogCredentialRedaction:
             "key1": "value1",
             "api_used": secret,
             "list_key": ["item1", f"auth {secret}", "item3"],
-            "nested": {
-                "credential": f"key={secret}"
-            }
+            "nested": {"credential": f"key={secret}"},
         }
         redacted = _redact_secrets(complex_data, secret)
-        
+
         assert redacted["api_used"] == "[REDACTED_API_KEY]"
         assert redacted["list_key"][1] == "auth [REDACTED_API_KEY]"
         assert redacted["nested"]["credential"] == "key=[REDACTED_API_KEY]"
@@ -141,15 +136,15 @@ class TestServerSecurityEndPoints:
         # Mock settings to have low rate limit
         with patch("UI.server.settings") as mock_settings:
             mock_settings.rate_limit_rpm = 2
-            
+
             # Reset rate limit dictionary
             rate_limit_records.clear()
-            
+
             # Make 3 fast requests
             res1 = self.client.get("/api/memory")
             res2 = self.client.get("/api/memory")
             res3 = self.client.get("/api/memory")
-            
+
             assert res1.status_code == 200
             assert res2.status_code == 200
             assert res3.status_code == 429

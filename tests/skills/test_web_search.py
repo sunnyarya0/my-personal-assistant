@@ -7,8 +7,9 @@ Mocks bs4 and httpx to provide fully isolated offline tests.
 
 from __future__ import annotations
 
-import sys
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from core.llm_client import LLMResponse
@@ -17,6 +18,7 @@ from skills.web_search import fetch_webpage, summarise_webpage, web_search
 
 class MockBeautifulSoup:
     """A highly robust mock for BeautifulSoup to support all operations in web_search.py."""
+
     def __init__(self, markup: str, parser: str | None = None) -> None:
         self.markup = markup
 
@@ -24,21 +26,24 @@ class MockBeautifulSoup:
         if tag == "div" and class_ == "result__body":
             if "No results!" in self.markup:
                 return []
-                
+
             # Element 1
             e1 = MagicMock()
             title_a1 = MagicMock()
             title_a1.get_text.return_value = "Python Programming Language"
             title_a1.get.return_value = "https://example.com/?uddg=https%3A%2F%2Fpython.org"
             snippet_a1 = MagicMock()
-            snippet_a1.get_text.return_value = "The official home of the Python Programming Language."
-            
+            snippet_a1.get_text.return_value = (
+                "The official home of the Python Programming Language."
+            )
+
             def find_mock1(sub_tag: str, class_: str | None = None) -> MagicMock | None:
                 if sub_tag == "a" and class_ == "result__title":
                     return title_a1
                 if sub_tag == "a" and class_ == "result__snippet":
                     return snippet_a1
                 return None
+
             e1.find.side_effect = find_mock1
 
             # Element 2
@@ -48,26 +53,31 @@ class MockBeautifulSoup:
             title_a2.get.return_value = "https://example.com/tips"
             snippet_a2 = MagicMock()
             snippet_a2.get_text.return_value = "Great tips for programming in Python."
-            
+
             def find_mock2(sub_tag: str, class_: str | None = None) -> MagicMock | None:
                 if sub_tag == "a" and class_ == "result__title":
                     return title_a2
                 if sub_tag == "a" and class_ == "result__snippet":
                     return snippet_a2
                 return None
+
             e2.find.side_effect = find_mock2
 
             return [e1, e2]
         return []
 
-    def __call__(self, *args, **kwargs) -> list[MagicMock]:
+    def __call__(self, *args: object, **kwargs: object) -> list[MagicMock]:
         # Handle soup(["script", "style", ...]) and decompose
         mock_el = MagicMock()
         return [mock_el]
 
     def get_text(self, separator: str = "") -> str:
         if "Real Main Content" in self.markup:
-            return "Real Main Content\nThis is the first paragraph of clean text.\nThis is the second paragraph."
+            return (
+                "Real Main Content\n"
+                "This is the first paragraph of clean text.\n"
+                "This is the second paragraph."
+            )
         return ""
 
 
@@ -78,7 +88,7 @@ mock_bs4_module.BeautifulSoup = MockBeautifulSoup
 
 class TestWebSearchSkills:
     @pytest.fixture(autouse=True)
-    def mock_bs4_import(self):
+    def mock_bs4_import(self) -> Iterator[None]:
         """Patch sys.modules to return the mock BeautifulSoup class when importing bs4."""
         with patch.dict("sys.modules", {"bs4": mock_bs4_module}):
             yield
@@ -108,7 +118,7 @@ class TestWebSearchSkills:
         mock_response = MagicMock()
         mock_response.text = "<html><body>No results!</body></html>"
         mock_response.raise_for_status = MagicMock()
-        
+
         mock_client = MagicMock()
         mock_client.__enter__.return_value = mock_client
         mock_client.post.return_value = mock_response
@@ -178,8 +188,10 @@ class TestWebSearchSkills:
             provider="ollama",
         )
 
-        with patch("skills.web_search.fetch_webpage", return_value="Scraped text from page"), \
-             patch("skills.web_search.get_llm_client", return_value=mock_llm_client):
+        with (
+            patch("skills.web_search.fetch_webpage", return_value="Scraped text from page"),
+            patch("skills.web_search.get_llm_client", return_value=mock_llm_client),
+        ):
             res = summarise_webpage("https://example.com/summary")
 
         assert res == "- Bullet point summary from LLM"
@@ -189,7 +201,10 @@ class TestWebSearchSkills:
         assert "You are an expert summarization assistant" in kwargs["system_prompt"]
 
     def test_summarise_webpage_scrape_error_returns_directly(self) -> None:
-        with patch("skills.web_search.fetch_webpage", return_value="Error fetching webpage: connection timed out"):
+        with patch(
+            "skills.web_search.fetch_webpage",
+            return_value="Error fetching webpage: connection timed out",
+        ):
             res = summarise_webpage("https://example.com/timeout")
 
         assert res == "Error fetching webpage: connection timed out"

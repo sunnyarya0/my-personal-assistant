@@ -7,7 +7,9 @@ Web search, scraping, and summarisation skills for the Personal AI Agent Assista
 from __future__ import annotations
 
 import urllib.parse
+
 import httpx
+
 from core.config import settings
 from core.llm_client import get_llm_client
 from core.registry import register_tool
@@ -36,10 +38,10 @@ def _is_domain_allowed(url: str) -> bool:
             # Handle cases where url might be 'example.com' without scheme
             parsed = urllib.parse.urlparse("http://" + url)
             netloc = parsed.netloc.lower()
-            
+
         if not netloc:
             return False
-            
+
         host = netloc.split(":")[0]
         for allowed in settings.allowed_domains:
             if host == allowed or host.endswith("." + allowed):
@@ -79,7 +81,7 @@ def web_search(query: str, num_results: int = 5) -> str:
         for body in soup.find_all("div", class_="result__body"):
             title_a = body.find("a", class_="result__title")
             snippet_a = body.find("a", class_="result__snippet")
-            
+
             if not title_a:
                 continue
 
@@ -97,11 +99,7 @@ def web_search(query: str, num_results: int = 5) -> str:
             if not _is_domain_allowed(link):
                 continue
 
-            results.append({
-                "title": title,
-                "url": link,
-                "snippet": snippet
-            })
+            results.append({"title": title, "url": link, "snippet": snippet})
 
             if len(results) >= num_results:
                 break
@@ -149,12 +147,14 @@ def fetch_webpage(url: str) -> str:
         soup = BeautifulSoup(response.text, "html.parser")
 
         # Strip non-content elements
-        for element in soup(["script", "style", "nav", "header", "footer", "form", "aside", "iframe"]):
+        for element in soup(
+            ["script", "style", "nav", "header", "footer", "form", "aside", "iframe"]
+        ):
             element.decompose()
 
         # Extract text
         text = soup.get_text(separator="\n")
-        
+
         # Clean up whitespace
         lines = (line.strip() for line in text.splitlines())
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
@@ -168,7 +168,9 @@ def fetch_webpage(url: str) -> str:
         return f"Error fetching webpage: {exc}"
 
 
-@register_tool(description="Fetch a webpage URL and generate a concise TL;DR summary of its content.")
+@register_tool(
+    description="Fetch a webpage URL and generate a concise TL;DR summary of its content."
+)
 def summarise_webpage(url: str) -> str:
     """
     Scrape a webpage and generate a summary using the local LLM.
@@ -197,7 +199,7 @@ def summarise_webpage(url: str) -> str:
             f"URL: {url}\n\n"
             f"CONTENT:\n{truncated}"
         )
-        
+
         response = client.chat(user_prompt, system_prompt=system_prompt)
         return response.content
     except Exception as exc:

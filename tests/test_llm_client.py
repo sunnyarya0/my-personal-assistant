@@ -8,7 +8,6 @@ All tests use mocked SDK responses — no live API calls are made.
 
 from __future__ import annotations
 
-import os
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -24,10 +23,10 @@ from core.llm_client import (
     ping_llm,
 )
 
-
 # ---------------------------------------------------------------------------
 # LLMResponse
 # ---------------------------------------------------------------------------
+
 
 class TestLLMResponse:
     def test_total_tokens(self) -> None:
@@ -44,6 +43,7 @@ class TestLLMResponse:
 # ---------------------------------------------------------------------------
 # GeminiClient
 # ---------------------------------------------------------------------------
+
 
 class TestGeminiClient:
     def _make_client(self) -> GeminiClient:
@@ -103,6 +103,7 @@ class TestGeminiClient:
 # OpenAIClient
 # ---------------------------------------------------------------------------
 
+
 class TestOpenAIClient:
     def _make_client(self) -> OpenAIClient:
         mock_openai_module = MagicMock()
@@ -142,6 +143,7 @@ class TestOpenAIClient:
 # ---------------------------------------------------------------------------
 # AnthropicClient
 # ---------------------------------------------------------------------------
+
 
 class TestAnthropicClient:
     def _make_client(self) -> AnthropicClient:
@@ -194,6 +196,7 @@ class TestAnthropicClient:
 # OllamaClient
 # ---------------------------------------------------------------------------
 
+
 class TestOllamaClient:
     def _make_client(self) -> OllamaClient:
         mock_ollama = MagicMock()
@@ -221,6 +224,7 @@ class TestOllamaClient:
 # get_llm_client factory
 # ---------------------------------------------------------------------------
 
+
 class TestGetLLMClient:
     def test_factory_returns_correct_client_type(self) -> None:
         mock_genai = MagicMock()
@@ -243,6 +247,7 @@ class TestGetLLMClient:
 # ping_llm
 # ---------------------------------------------------------------------------
 
+
 class TestPingLLM:
     def test_ping_returns_false_on_missing_api_key(self) -> None:
         with patch("core.llm_client.settings") as mock_settings:
@@ -256,8 +261,10 @@ class TestPingLLM:
         mock_client = MagicMock()
         mock_client.ping.return_value = True
 
-        with patch("core.llm_client.settings") as mock_settings, \
-             patch("core.llm_client.get_llm_client", return_value=mock_client):
+        with (
+            patch("core.llm_client.settings") as mock_settings,
+            patch("core.llm_client.get_llm_client", return_value=mock_client),
+        ):
             mock_settings.llm_provider = "gemini"
             mock_settings.llm_model = "gemini-2.0-flash"
             mock_settings.validate_api_key = MagicMock()

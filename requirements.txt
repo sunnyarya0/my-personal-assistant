@@ -13,6 +13,10 @@ rich>=13.7                # Beautiful terminal output
 # --- HTTP Client ---
 httpx>=0.27               # Async-capable HTTP client
 
+# --- Web UI Server ---
+fastapi>=0.111            # REST + WebSocket API for the web UI
+uvicorn>=0.30             # ASGI server
+
 # --- LLM Provider SDKs ---
 google-generativeai>=0.7  # Google Gemini
 openai>=1.30              # OpenAI GPT models

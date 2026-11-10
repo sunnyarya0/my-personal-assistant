@@ -32,8 +32,8 @@ Or when done:
 from __future__ import annotations
 
 import json
-import re
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,13 +45,15 @@ logger = logging.getLogger(__name__)
 # Parsed action from LLM output
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentAction:
     """Represents one parsed response from the LLM during the ReAct loop."""
-    thought: str                          # LLM's internal reasoning
-    action: str | None                    # Tool name to call (None = done)
-    action_input: dict[str, Any]          # Arguments for the tool
-    final_answer: str | None              # Set when the LLM is done
+
+    thought: str  # LLM's internal reasoning
+    action: str | None  # Tool name to call (None = done)
+    action_input: dict[str, Any]  # Arguments for the tool
+    final_answer: str | None  # Set when the LLM is done
 
     @property
     def is_done(self) -> bool:

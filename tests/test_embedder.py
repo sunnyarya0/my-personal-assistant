@@ -7,16 +7,17 @@ All tests use a mocked sentence-transformers to avoid downloading model files du
 
 from __future__ import annotations
 
-import sys
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
+
 import pytest
 
-from core.embedder import LocalEmbedder, get_embedder, DEFAULT_MODEL
+from core.embedder import DEFAULT_MODEL, LocalEmbedder, get_embedder
 
 
 class TestLocalEmbedder:
     @pytest.fixture(autouse=True)
-    def mock_sentence_transformers(self):
+    def mock_sentence_transformers(self) -> Iterator[None]:
         """Mock the sentence_transformers library to avoid network/local downloads."""
         self.mock_model_class = MagicMock()
         self.mock_model_instance = MagicMock()
@@ -31,7 +32,9 @@ class TestLocalEmbedder:
         # Mock encoding batch texts
         self.mock_vectors = [self.mock_vector, self.mock_vector]
 
-        def encode_mock(text_or_texts, **kwargs):
+        def encode_mock(
+            text_or_texts: str | list[str], **kwargs: object
+        ) -> MagicMock | list[MagicMock]:
             if isinstance(text_or_texts, str):
                 return self.mock_vector
             else:
@@ -60,11 +63,13 @@ class TestLocalEmbedder:
     def test_embed_success(self) -> None:
         embedder = LocalEmbedder()
         vec = embedder.embed("test sentence")
-        
+
         assert isinstance(vec, list)
         assert len(vec) == 384
         assert all(isinstance(x, float) for x in vec)
-        self.mock_model_instance.encode.assert_called_once_with("test sentence", convert_to_numpy=True)
+        self.mock_model_instance.encode.assert_called_once_with(
+            "test sentence", convert_to_numpy=True
+        )
 
     def test_embed_empty_or_whitespace_raises(self) -> None:
         embedder = LocalEmbedder()

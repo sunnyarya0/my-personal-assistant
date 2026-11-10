@@ -80,6 +80,7 @@ def _load_yaml_defaults() -> dict:
 # Settings model
 # ---------------------------------------------------------------------------
 
+
 class Settings(BaseSettings):
     """
     Central configuration object for the Personal AI Agent Assistant.
@@ -132,7 +133,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def resolve_model_and_workspace(self) -> "Settings":
+    def resolve_model_and_workspace(self) -> Settings:
         # If no model specified, use provider default
         if not self.llm_model:
             self.llm_model = PROVIDER_DEFAULTS[self.llm_provider]
@@ -174,6 +175,7 @@ class Settings(BaseSettings):
 # ---------------------------------------------------------------------------
 # Module-level singleton — load once, use everywhere
 # ---------------------------------------------------------------------------
+
 
 def _build_settings() -> Settings:
     """Build Settings, applying YAML defaults as fallback."""

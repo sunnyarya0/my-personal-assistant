@@ -7,9 +7,7 @@ Unit tests for the system execution and diagnostics skill in skills/system_ops.p
 from __future__ import annotations
 
 import subprocess
-import sys
 from unittest.mock import MagicMock, patch
-import pytest
 
 from skills.system_ops import get_system_info, list_processes, run_command
 
@@ -60,7 +58,9 @@ class TestSystemOpsSkills:
         assert "[Exit Code: 0]" in res
 
     def test_run_command_timeout(self) -> None:
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="sleep 100", timeout=30.0)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="sleep 100", timeout=30.0)
+        ):
             res = run_command("sleep 100")
 
         assert "timed out after 30 seconds" in res
@@ -127,8 +127,10 @@ class TestSystemOpsSkills:
         mock_process.returncode = 0
         mock_process.stdout = "1 root systemd\n10 user python"
 
-        with patch.dict("sys.modules", {"psutil": None}), \
-             patch("subprocess.run", return_value=mock_process) as mock_sub:
+        with (
+            patch.dict("sys.modules", {"psutil": None}),
+            patch("subprocess.run", return_value=mock_process) as mock_sub,
+        ):
             res = list_processes()
 
         assert "Active Processes (psutil fallback" in res
@@ -137,8 +139,10 @@ class TestSystemOpsSkills:
         mock_sub.assert_called_once()
 
     def test_list_processes_fallback_failure(self) -> None:
-        with patch.dict("sys.modules", {"psutil": None}), \
-             patch("subprocess.run", side_effect=Exception("Execution failed")):
+        with (
+            patch.dict("sys.modules", {"psutil": None}),
+            patch("subprocess.run", side_effect=Exception("Execution failed")),
+        ):
             res = list_processes()
 
         assert "Could not list processes" in res

@@ -6,9 +6,9 @@ Unit tests for the sandboxed file operations skill in skills/file_ops.py.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 
 from core.config import settings
@@ -24,11 +24,11 @@ from skills.file_ops import (
 
 class TestFileOpsSkills:
     @pytest.fixture(autouse=True)
-    def setup_sandbox(self, tmp_path) -> None:
+    def setup_sandbox(self, tmp_path: Path) -> None:
         """Override the workspace directory with a clean temporary directory."""
         self.workspace = tmp_path / "workspace"
         self.workspace.mkdir()
-        
+
         with patch.object(settings, "workspace_dir", str(self.workspace)):
             yield
 

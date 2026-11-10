@@ -6,7 +6,9 @@ Unit tests for the memory skills (agent tools) in skills/memory_ops.py.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from core.memory import MemoryEntry, SearchResult
@@ -15,7 +17,7 @@ from skills.memory_ops import recall, remember
 
 class TestMemoryOpsSkills:
     @pytest.fixture(autouse=True)
-    def mock_store(self):
+    def mock_store(self) -> Iterator[None]:
         self.mock_mem_store = MagicMock()
         with patch("skills.memory_ops.get_memory_store", return_value=self.mock_mem_store):
             yield
@@ -47,9 +49,7 @@ class TestMemoryOpsSkills:
         res = remember("User lives in Paris")
 
         assert res == "Remembered (id=87654321): User lives in Paris"
-        self.mock_mem_store.save.assert_called_once_with(
-            "User lives in Paris", tags=[]
-        )
+        self.mock_mem_store.save.assert_called_once_with("User lives in Paris", tags=[])
 
     def test_recall_no_memories(self) -> None:
         self.mock_mem_store.search.return_value = []
@@ -57,9 +57,7 @@ class TestMemoryOpsSkills:
         res = recall("where does the user live?")
 
         assert res == "No relevant memories found."
-        self.mock_mem_store.search.assert_called_once_with(
-            "where does the user live?", top_k=5
-        )
+        self.mock_mem_store.search.assert_called_once_with("where does the user live?", top_k=5)
 
     def test_recall_with_memories(self) -> None:
         e1 = MemoryEntry(
@@ -86,6 +84,4 @@ class TestMemoryOpsSkills:
             "2. [2026-05-26] User is a software engineer  (score: 0.72)"
         )
         assert res == expected
-        self.mock_mem_store.search.assert_called_once_with(
-            "coffee preference", top_k=2
-        )
+        self.mock_mem_store.search.assert_called_once_with("coffee preference", top_k=2)

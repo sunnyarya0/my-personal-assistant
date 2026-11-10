@@ -26,9 +26,10 @@ import inspect
 import json
 import logging
 import sys
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +37,16 @@ logger = logging.getLogger(__name__)
 # Tool metadata
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ToolSchema:
     """Metadata and schema for a single registered tool."""
+
     name: str
     description: str
     destructive: bool
     function: Callable
-    parameters: dict[str, Any]   # JSON-schema-style parameter spec
+    parameters: dict[str, Any]  # JSON-schema-style parameter spec
 
     def to_dict(self) -> dict[str, Any]:
         """Serialisable representation for prompt injection."""
@@ -134,6 +137,7 @@ def _build_parameter_schema(func: Callable) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class ToolRegistry:
     """
@@ -278,6 +282,7 @@ registry = ToolRegistry()
 # @register_tool decorator
 # ---------------------------------------------------------------------------
 
+
 def register_tool(
     func: Callable | None = None,
     *,
@@ -302,6 +307,7 @@ def register_tool(
         description: Override the description.
         destructive: Mark this tool as destructive (triggers safe mode).
     """
+
     def decorator(fn: Callable) -> Callable:
         registry.register(fn, name=name, description=description, destructive=destructive)
         return fn

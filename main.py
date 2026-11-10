@@ -15,21 +15,19 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import print as rprint
 
 # Make sure the project root is on the Python path when running as a script
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.config import settings
-from core.llm_client import get_llm_client, ping_llm
-from core.registry import registry
 from core.agent import Agent
+from core.config import settings
+from core.llm_client import ping_llm
+from core.registry import registry
 
 # ---------------------------------------------------------------------------
 # App & console setup
@@ -56,6 +54,7 @@ BANNER = """
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _print_banner() -> None:
     console.print(BANNER)
 
@@ -68,6 +67,7 @@ def _abort(message: str) -> None:
 # ---------------------------------------------------------------------------
 # CLI Commands
 # ---------------------------------------------------------------------------
+
 
 @app.command()
 def ping() -> None:
@@ -133,19 +133,21 @@ def chat(
 
     # Display result (verbose already printed the answer inline)
     if not verbose:
-        console.print(Panel(
-            result.final_answer,
-            title=f"[bold green]{settings.agent_name}[/bold green]",
-            subtitle=f"[dim]{result.iterations_used} step(s) | {result.total_elapsed_s:.1f}s[/dim]",
-            border_style="green",
-            padding=(1, 2),
-        ))
+        console.print(
+            Panel(
+                result.final_answer,
+                title=f"[bold green]{settings.agent_name}[/bold green]",
+                subtitle=(
+                    f"[dim]{result.iterations_used} step(s) | "
+                    f"{result.total_elapsed_s:.1f}s[/dim]"
+                ),
+                border_style="green",
+                padding=(1, 2),
+            )
+        )
 
     if not result.success:
         raise typer.Exit(code=1)
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +162,7 @@ app.add_typer(app_memory, name="memory")
 def memory_list(limit: int = typer.Option(50, help="Max entries to list")) -> None:
     """List recent memories stored by the agent."""
     from core.memory import get_memory_store
+
     mem = get_memory_store()
     entries = mem.list_all(limit=limit)
 
@@ -182,6 +185,7 @@ def memory_search(
 ) -> None:
     """Search the memory for relevant information."""
     from core.memory import get_memory_store
+
     mem = get_memory_store()
     results = mem.search(query, top_k=top_k)
 
@@ -202,12 +206,15 @@ def memory_clear(
 ) -> None:
     """Wipe all memories (cannot be undone)."""
     if not force:
-        confirm = typer.confirm("Are you sure you want to delete ALL memories? This cannot be undone.")
+        confirm = typer.confirm(
+            "Are you sure you want to delete ALL memories? This cannot be undone."
+        )
         if not confirm:
             console.print("[yellow]Aborted.[/yellow]")
             return
 
     from core.memory import get_memory_store
+
     mem = get_memory_store()
     count = mem.clear(confirm=True)
     console.print(f"[bold green]Cleared {count} memories.[/bold green]")
@@ -291,9 +298,10 @@ def config_show() -> None:
 # Serve command
 # ---------------------------------------------------------------------------
 
+
 @app.command()
 def serve(
-    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port to run the web UI on."),
+    port: int | None = typer.Option(None, "--port", "-p", help="Port to run the web UI on."),
 ) -> None:
     """
     🌐 Start the web UI dashboard and open your browser automatically.
@@ -301,12 +309,13 @@ def serve(
     Example:
         python main.py serve --port 8080
     """
-    import uvicorn
     import webbrowser
+
+    import uvicorn
 
     _print_banner()
     _port = port or settings.ui_port
-    
+
     url = f"http://127.0.0.1:{_port}"
     console.print(f"Starting server on [bold]{url}[/bold]...")
 

@@ -23,17 +23,18 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import typer
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.table import Table
-from rich import box
 
 from core.config import settings
 from core.llm_client import BaseLLMClient, get_llm_client
@@ -44,7 +45,8 @@ from core.prompt import (
     build_system_prompt,
     parse_llm_response,
 )
-from core.registry import ToolRegistry, registry as _global_registry
+from core.registry import ToolRegistry
+from core.registry import registry as _global_registry
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -54,9 +56,11 @@ console = Console()
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentStep:
     """A single reasoning + action step in the agent loop."""
+
     iteration: int
     thought: str
     action: str | None
@@ -78,6 +82,7 @@ class AgentStep:
 @dataclass
 class AgentResult:
     """The final result returned after the agent loop completes."""
+
     goal: str
     final_answer: str
     steps: list[AgentStep] = field(default_factory=list)
@@ -118,6 +123,7 @@ def _redact_secrets(data: Any, key_to_redact: str) -> Any:
 # ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
+
 
 class Agent:
     """
@@ -207,7 +213,10 @@ class Agent:
             # --- Token Budget Warning ---
             approx_tokens = (len(system_prompt) + len(current_prompt)) // 4
             if approx_tokens > settings.llm_max_tokens * 0.8:
-                warn_msg = f"Token Warning: Current prompt uses approx {approx_tokens} tokens, which is nearing the max_tokens limit of {settings.llm_max_tokens}"
+                warn_msg = (
+                    f"Token Warning: Current prompt uses approx {approx_tokens} tokens, "
+                    f"which is nearing the max_tokens limit of {settings.llm_max_tokens}"
+                )
                 logger.warning(warn_msg)
                 if self.verbose:
                     console.print(f"[bold yellow]⚠️  {warn_msg}[/bold yellow]")
@@ -241,13 +250,16 @@ class Agent:
                 self._print_thought(action.thought)
 
             if on_event:
-                on_event("agent_step", {
-                    "iteration": iteration,
-                    "thought": action.thought,
-                    "action": action.action,
-                    "action_input": action.action_input,
-                    "is_done": action.is_done,
-                })
+                on_event(
+                    "agent_step",
+                    {
+                        "iteration": iteration,
+                        "thought": action.thought,
+                        "action": action.action,
+                        "action_input": action.action_input,
+                        "is_done": action.is_done,
+                    },
+                )
 
             # --- Done? ---
             if action.is_done:
@@ -255,10 +267,13 @@ class Agent:
                 if self.verbose:
                     self._print_final_answer(action.final_answer or "")
                 if on_event:
-                    on_event("agent_done", {
-                        "final_answer": action.final_answer or "",
-                        "iterations_used": iteration,
-                    })
+                    on_event(
+                        "agent_done",
+                        {
+                            "final_answer": action.final_answer or "",
+                            "iterations_used": iteration,
+                        },
+                    )
                 result = AgentResult(
                     goal=goal,
                     final_answer=action.final_answer or "",
@@ -276,10 +291,13 @@ class Agent:
                 # LLM gave no action and no answer — treat thought as answer
                 elapsed = time.perf_counter() - start_time
                 if on_event:
-                    on_event("agent_done", {
-                        "final_answer": action.thought,
-                        "iterations_used": iteration,
-                    })
+                    on_event(
+                        "agent_done",
+                        {
+                            "final_answer": action.thought,
+                            "iterations_used": iteration,
+                        },
+                    )
                 return AgentResult(
                     goal=goal,
                     final_answer=action.thought,
@@ -290,19 +308,25 @@ class Agent:
                 )
 
             if on_event:
-                on_event("tool_start", {
-                    "iteration": iteration,
-                    "tool": action.action,
-                    "input": action.action_input,
-                })
+                on_event(
+                    "tool_start",
+                    {
+                        "iteration": iteration,
+                        "tool": action.action,
+                        "input": action.action_input,
+                    },
+                )
 
             observation = self._execute_tool(action)
             if on_event:
-                on_event("tool_end", {
-                    "iteration": iteration,
-                    "tool": action.action,
-                    "observation": observation,
-                })
+                on_event(
+                    "tool_end",
+                    {
+                        "iteration": iteration,
+                        "tool": action.action,
+                        "observation": observation,
+                    },
+                )
             step_elapsed = (time.perf_counter() - step_start) * 1000
 
             step = AgentStep(
@@ -370,8 +394,7 @@ class Agent:
             result = tool_schema.function(**action.action_input)
             observation = str(result) if result is not None else "(no output)"
             logger.info(
-                "Tool %s called with %s → %s",
-                action.action, action.action_input, observation[:100]
+                "Tool %s called with %s → %s", action.action, action.action_input, observation[:100]
             )
             return observation
         except TypeError as exc:
@@ -405,10 +428,10 @@ class Agent:
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             log_file = self._log_dir / f"session_{timestamp}.json"
-            
+
             data_dict = result.to_dict()
             redacted_dict = _redact_secrets(data_dict, settings.api_key)
-            
+
             with open(log_file, "w") as f:
                 json.dump(redacted_dict, f, indent=2)
             logger.debug("Session logged to %s", log_file)
@@ -427,10 +450,7 @@ class Agent:
         if len(result.goal.split()) < 3 and len(result.final_answer.split()) < 10:
             return
 
-        content = (
-            f"User Goal: {result.goal}\n"
-            f"Outcome: {result.final_answer}"
-        )
+        content = f"User Goal: {result.goal}\n" f"Outcome: {result.final_answer}"
         try:
             self.memory.save(content, tags=["auto_save"])
             logger.debug("Auto-saved outcome to long-term memory.")
@@ -443,20 +463,23 @@ class Agent:
 
     def _print_goal_header(self, goal: str, tools: list) -> None:
         console.print()
-        console.print(Panel(
-            f"[bold white]{goal}[/bold white]",
-            title=f"[bold cyan]🎯 Goal[/bold cyan]",
-            subtitle=f"[dim]{len(tools)} tools available | max {self.max_iterations} iterations[/dim]",
-            border_style="cyan",
-            padding=(0, 2),
-        ))
+        console.print(
+            Panel(
+                f"[bold white]{goal}[/bold white]",
+                title="[bold cyan]🎯 Goal[/bold cyan]",
+                subtitle=(
+                    f"[dim]{len(tools)} tools available | "
+                    f"max {self.max_iterations} iterations[/dim]"
+                ),
+                border_style="cyan",
+                padding=(0, 2),
+            )
+        )
 
     def _print_thought(self, thought: str) -> None:
         console.print(f"\n[bold magenta]💭 Thought:[/bold magenta] [white]{thought}[/white]")
 
-    def _print_tool_call(
-        self, tool_name: str, inputs: dict, observation: str
-    ) -> None:
+    def _print_tool_call(self, tool_name: str, inputs: dict, observation: str) -> None:
         table = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
         table.add_column("Label", style="bold green", no_wrap=True)
         table.add_column("Value", style="white")
@@ -468,12 +491,14 @@ class Agent:
     def _print_final_answer(self, answer: str) -> None:
         console.print()
         console.print(Rule("[bold green]Final Answer[/bold green]"))
-        console.print(Panel(
-            answer,
-            title=f"[bold green]{self.agent_name}[/bold green]",
-            border_style="green",
-            padding=(1, 2),
-        ))
+        console.print(
+            Panel(
+                answer,
+                title=f"[bold green]{self.agent_name}[/bold green]",
+                border_style="green",
+                padding=(1, 2),
+            )
+        )
 
     # ------------------------------------------------------------------
     # Helpers

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import fnmatch
 import os
-import shutil
 from pathlib import Path
+
 from core.config import settings
 from core.registry import register_tool
 
@@ -31,7 +31,7 @@ def _safe_path(path_str: str) -> Path:
         ValueError: If the path escapes the workspace sandbox.
     """
     workspace = Path(settings.workspace_dir).resolve()
-    
+
     # Try to resolve path
     path = Path(path_str).expanduser()
     if not path.is_absolute():
@@ -75,7 +75,7 @@ def read_file(path: str) -> str:
             return f"Error: File '{path}' does not exist."
         if not safe_path.is_file():
             return f"Error: '{path}' is not a file."
-        
+
         # Read text content
         return safe_path.read_text(encoding="utf-8")
     except Exception as exc:
@@ -96,10 +96,10 @@ def write_file(path: str, content: str) -> str:
     """
     try:
         safe_path = _safe_path(path)
-        
+
         # Ensure parent directories exist
         safe_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         safe_path.write_text(content, encoding="utf-8")
         return f"Successfully wrote {len(content)} characters to file: {path}"
     except Exception as exc:
@@ -197,7 +197,9 @@ def delete_file(path: str) -> str:
         if not safe_path.exists():
             return f"Error: File '{path}' does not exist."
         if not safe_path.is_file():
-            return f"Error: '{path}' is not a file. Use a directory specific command for directories."
+            return (
+                f"Error: '{path}' is not a file. Use a directory specific command for directories."
+            )
 
         safe_path.unlink()
         return f"Successfully deleted file: {path}"

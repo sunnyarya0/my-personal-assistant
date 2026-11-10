@@ -6,12 +6,12 @@ System execution and diagnostics skill for the Personal AI Agent Assistant.
 
 from __future__ import annotations
 
-import os
 import platform
 import re
 import shutil
 import subprocess
 import sys
+
 from core.config import settings
 from core.registry import register_tool
 
@@ -25,8 +25,18 @@ def _is_command_safe(command: str) -> tuple[bool, str]:
 
     # 1. Block extremely dangerous binaries and options
     banned_words = [
-        "sudo", "shutdown", "reboot", "poweroff", "init 0", "init 6",
-        "mkfs", "dd", "fdisk", "parted", "chown", "chmod"
+        "sudo",
+        "shutdown",
+        "reboot",
+        "poweroff",
+        "init 0",
+        "init 6",
+        "mkfs",
+        "dd",
+        "fdisk",
+        "parted",
+        "chown",
+        "chmod",
     ]
     for word in banned_words:
         pattern = rf"\b{re.escape(word)}\b"
@@ -35,7 +45,7 @@ def _is_command_safe(command: str) -> tuple[bool, str]:
 
     # 2. Block dangerous rm (deletes) outside the workspace
     if "rm " in cmd_lower or "rmdir " in cmd_lower:
-        if re.search(rf"\b(rm|rmdir)\b", cmd_lower):
+        if re.search(r"\b(rm|rmdir)\b", cmd_lower):
             if ".." in cmd_lower:
                 return False, "Directory traversal ('..') blocked in command."
             if "~" in cmd_lower:
@@ -44,12 +54,15 @@ def _is_command_safe(command: str) -> tuple[bool, str]:
             # Check absolute paths
             if "/" in cmd_lower:
                 workspace = settings.workspace_dir.lower()
-                matches = re.findall(r'/\S*', cmd_lower)
+                matches = re.findall(r"/\S*", cmd_lower)
                 for path in matches:
                     # Allow path if it starts with the workspace path
                     # Handle trailing slashes or subdirectories cleanly
                     if path and not path.startswith(workspace):
-                        return False, f"Potentially unsafe path deletion '{path}' outside workspace."
+                        return (
+                            False,
+                            f"Potentially unsafe path deletion '{path}' outside workspace.",
+                        )
 
     return True, ""
 
@@ -78,19 +91,19 @@ def run_command(command: str) -> str:
             capture_output=True,
             timeout=30.0,
         )
-        
+
         output_parts = []
         if res.stdout:
             output_parts.append(res.stdout)
         if res.stderr:
             output_parts.append(f"stderr:\n{res.stderr}")
-            
+
         output = "\n".join(output_parts).strip()
-        
+
         status_msg = f"[Exit Code: {res.returncode}]"
         if not output:
             return f"Command executed successfully with no output. {status_msg}"
-            
+
         return f"{status_msg}\n{output}"
     except subprocess.TimeoutExpired:
         return "Error: Command execution timed out after 30 seconds."
@@ -128,6 +141,7 @@ def get_system_info() -> str:
     # Memory usage with psutil fallback
     try:
         import psutil  # type: ignore
+
         mem = psutil.virtual_memory()
         total_mb = mem.total / (1024**2)
         available_mb = mem.available / (1024**2)
@@ -152,6 +166,7 @@ def list_processes() -> str:
     # 1. Try with psutil
     try:
         import psutil  # type: ignore
+
         proc_list = []
         for proc in psutil.process_iter(["pid", "name", "username"]):
             try:
@@ -159,7 +174,7 @@ def list_processes() -> str:
                 proc_list.append(info)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-        
+
         # Sort by PID and take top 40
         proc_list.sort(key=lambda p: p["pid"])
         top_procs = proc_list[:40]
@@ -169,7 +184,7 @@ def list_processes() -> str:
         lines.append("-" * 45)
         for p in top_procs:
             lines.append(f"{p['pid']:<8} {str(p['username']):<15} {p['name']}")
-        
+
         return "\n".join(lines)
 
     except ImportError:
@@ -184,10 +199,12 @@ def list_processes() -> str:
             res = subprocess.run(cmd, shell=True, text=True, capture_output=True, timeout=5)
             if res.returncode == 0 and res.stdout:
                 return (
-                    f"Active Processes (psutil fallback via '{cmd}'):\n\n"
-                    f"{res.stdout.strip()}"
+                    f"Active Processes (psutil fallback via '{cmd}'):\n\n" f"{res.stdout.strip()}"
                 )
         except Exception:
             pass
 
-        return "Error: Could not list processes. 'psutil' is not installed and fallback command failed."
+        return (
+            "Error: Could not list processes. "
+            "'psutil' is not installed and fallback command failed."
+        )

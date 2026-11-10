@@ -7,16 +7,13 @@ Unit tests for the FastAPI backend endpoints in UI/server.py.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
+
 from fastapi.testclient import TestClient
 
-from core.llm_client import LLMResponse
-from core.agent import AgentResult, AgentStep
+from core.agent import AgentResult
 from core.memory import MemoryEntry, SearchResult
 from UI.server import app
-
 
 # Initialize the test client
 client = TestClient(app)
@@ -28,8 +25,10 @@ class TestApiEndpoints:
     # -----------------------------------------------------------------------
 
     def test_serve_index_success(self) -> None:
-        with patch("UI.server.Path.exists", return_value=True), \
-             patch("UI.server.FileResponse", return_value="mock-html") as mock_response:
+        with (
+            patch("UI.server.Path.exists", return_value=True),
+            patch("UI.server.FileResponse", return_value="mock-html") as mock_response,
+        ):
             response = client.get("/")
             assert response.status_code == 200
             assert mock_response.called
@@ -41,16 +40,20 @@ class TestApiEndpoints:
             assert "index.html not found" in response.json()["detail"]
 
     def test_serve_css_success(self) -> None:
-        with patch("UI.server.Path.exists", return_value=True), \
-             patch("UI.server.Path.read_text", return_value="body { color: red; }"):
+        with (
+            patch("UI.server.Path.exists", return_value=True),
+            patch("UI.server.Path.read_text", return_value="body { color: red; }"),
+        ):
             response = client.get("/index.css")
             assert response.status_code == 200
             assert "text/css" in response.headers["content-type"]
             assert "color: red;" in response.text
 
     def test_serve_js_success(self) -> None:
-        with patch("UI.server.Path.exists", return_value=True), \
-             patch("UI.server.Path.read_text", return_value="console.log('hello');"):
+        with (
+            patch("UI.server.Path.exists", return_value=True),
+            patch("UI.server.Path.read_text", return_value="console.log('hello');"),
+        ):
             response = client.get("/index.js")
             assert response.status_code == 200
             assert "application/javascript" in response.headers["content-type"]
@@ -61,9 +64,7 @@ class TestApiEndpoints:
     # -----------------------------------------------------------------------
 
     def test_list_memories_reverse_chronological(self) -> None:
-        mock_mem = MemoryEntry(
-            id="1", content="pref", timestamp="2026-05-27T00:00:00Z", tags=["a"]
-        )
+        mock_mem = MemoryEntry(id="1", content="pref", timestamp="2026-05-27T00:00:00Z", tags=["a"])
         mock_store = MagicMock()
         mock_store.list_all.return_value = [mock_mem]
 
@@ -124,7 +125,7 @@ class TestApiEndpoints:
         mock_log_file = MagicMock()
         mock_log_file.stem = "session_20260527_100000"
         mock_log_file.name = "session_20260527_100000.json"
-        
+
         # Mock session contents
         mock_data = {
             "goal": "Test goal",
@@ -147,9 +148,11 @@ class TestApiEndpoints:
 
     def test_get_task_details_success(self) -> None:
         mock_data = {"goal": "Details", "success": True, "steps": []}
-        
-        with patch("UI.server.Path.exists", return_value=True), \
-             patch("UI.server.Path.read_text", return_value=json.dumps(mock_data)):
+
+        with (
+            patch("UI.server.Path.exists", return_value=True),
+            patch("UI.server.Path.read_text", return_value=json.dumps(mock_data)),
+        ):
             response = client.get("/api/tasks/20260527_100000")
 
         assert response.status_code == 200
@@ -174,12 +177,14 @@ class TestApiEndpoints:
             iterations_used=1,
             success=True,
         )
-        
+
         mock_agent = MagicMock()
         mock_agent.run.return_value = mock_result
 
-        with patch("UI.server.Agent", return_value=mock_agent), \
-             patch("UI.server.registry.discover_skills") as mock_discover:
+        with (
+            patch("UI.server.Agent", return_value=mock_agent),
+            patch("UI.server.registry.discover_skills") as mock_discover,
+        ):
             response = client.post("/api/chat", json={"message": "Hello"})
 
         assert response.status_code == 200
@@ -207,7 +212,7 @@ class TestApiEndpoints:
             # Using client.websocket_connect simulates Starlette's websocket client
             with client.websocket_connect("/api/ws/chat") as ws:
                 ws.send_text('{"goal": "Tell me timezone"}')
-                
+
                 # Check for agent completed done message
                 data = ws.receive_json()
                 assert data["type"] == "agent_done"

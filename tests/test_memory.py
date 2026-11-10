@@ -7,23 +7,25 @@ Mocks chromadb and sentence_transformers to provide isolated, rapid tests.
 
 from __future__ import annotations
 
-import sys
+from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from core.memory import (
+    LongTermMemory,
     MemoryEntry,
+    MemoryStore,
     SearchResult,
     ShortTermMemory,
-    LongTermMemory,
-    MemoryStore,
     get_memory_store,
 )
-
 
 # ---------------------------------------------------------------------------
 # MemoryEntry & SearchResult
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryDataModels:
     def test_memory_entry_creation(self) -> None:
@@ -58,6 +60,7 @@ class TestMemoryDataModels:
 # ShortTermMemory
 # ---------------------------------------------------------------------------
 
+
 class TestShortTermMemory:
     def test_short_term_memory_operations(self) -> None:
         mem = ShortTermMemory(max_turns=3)
@@ -83,9 +86,10 @@ class TestShortTermMemory:
 # LongTermMemory
 # ---------------------------------------------------------------------------
 
+
 class TestLongTermMemory:
     @pytest.fixture(autouse=True)
-    def mock_dependencies(self):
+    def mock_dependencies(self) -> Iterator[None]:
         # Mock embedder
         self.mock_embedder = MagicMock()
         self.mock_embedder.embed.return_value = [0.2] * 384
@@ -99,17 +103,19 @@ class TestLongTermMemory:
         self.mock_chromadb_module = MagicMock()
         self.mock_chromadb_module.PersistentClient.return_value = self.mock_client
 
-        with patch("core.memory.get_embedder", return_value=self.mock_embedder), \
-             patch.dict("sys.modules", {"chromadb": self.mock_chromadb_module}):
+        with (
+            patch("core.memory.get_embedder", return_value=self.mock_embedder),
+            patch.dict("sys.modules", {"chromadb": self.mock_chromadb_module}),
+        ):
             yield
 
-    def test_lazy_connection(self, tmp_path) -> None:
+    def test_lazy_connection(self, tmp_path: Path) -> None:
         fake_path = str(tmp_path / "memory_dir")
         lt = LongTermMemory(persist_dir=fake_path)
         assert lt._client is None
         assert lt._collection is None
 
-        count = lt.count()
+        lt.count()
         assert lt._client is self.mock_client
         assert lt._collection is self.mock_collection
         self.mock_chromadb_module.PersistentClient.assert_called_once_with(path=fake_path)
@@ -162,7 +168,9 @@ class TestLongTermMemory:
 
         assert deleted == 10
         self.mock_client.delete_collection.assert_called_once_with("agent_memory")
-        assert self.mock_client.get_or_create_collection.call_count == 2  # once in init connect, once in clear
+        assert (
+            self.mock_client.get_or_create_collection.call_count == 2
+        )  # once in init connect, once in clear
 
     def test_clear_empty_returns_zero(self) -> None:
         self.mock_collection.count.return_value = 0
@@ -181,10 +189,12 @@ class TestLongTermMemory:
         self.mock_collection.query.return_value = {
             "ids": [["id1", "id2"]],
             "documents": [["doc1", "doc2"]],
-            "metadatas": [[
-                {"timestamp": "2026-05-27T00:00:00Z", "tags": "t1,t2", "meta_priority": "high"},
-                {"timestamp": "2026-05-26T00:00:00Z", "tags": "t3", "meta_priority": "low"},
-            ]],
+            "metadatas": [
+                [
+                    {"timestamp": "2026-05-27T00:00:00Z", "tags": "t1,t2", "meta_priority": "high"},
+                    {"timestamp": "2026-05-26T00:00:00Z", "tags": "t3", "meta_priority": "low"},
+                ]
+            ],
             "distances": [[0.2, 0.6]],  # distances: 0.2 similarity = 0.9, 0.6 similarity = 0.7
         }
 
@@ -236,6 +246,7 @@ class TestLongTermMemory:
 # ---------------------------------------------------------------------------
 # MemoryStore Facade
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryStore:
     @pytest.fixture(autouse=True)
@@ -308,7 +319,9 @@ class TestMemoryStore:
 
     def test_build_context_block_with_results(self) -> None:
         store = MemoryStore()
-        e1 = MemoryEntry(id="1", content="User likes apples", timestamp="2026-05-27T00:00:00Z", tags=["pref"])
+        e1 = MemoryEntry(
+            id="1", content="User likes apples", timestamp="2026-05-27T00:00:00Z", tags=["pref"]
+        )
         e2 = MemoryEntry(id="2", content="User owns a dog", timestamp="2026-05-26T00:00:00Z")
         self.mock_lt.search.return_value = [
             SearchResult(entry=e1, score=0.9234),

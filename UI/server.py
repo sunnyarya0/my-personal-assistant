@@ -7,22 +7,22 @@ FastAPI backend server for the Personal AI Agent Assistant Web Dashboard.
 from __future__ import annotations
 
 import asyncio
-from collections import defaultdict
 import json
 import logging
-from pathlib import Path
 import time
+from collections import defaultdict
+from pathlib import Path
 from typing import Any
-import uvicorn
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request, Depends
+
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+from core.agent import Agent
 from core.config import settings
 from core.memory import get_memory_store
-from core.agent import Agent
 from core.registry import registry
 
 # Configure logging
@@ -38,15 +38,12 @@ async def rate_limiter(request: Request) -> None:
         return
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
-    
+
     timestamps = rate_limit_records[client_ip]
     rate_limit_records[client_ip] = [t for t in timestamps if now - t < 60]
-    
+
     if len(rate_limit_records[client_ip]) >= settings.rate_limit_rpm:
-        raise HTTPException(
-            status_code=429,
-            detail="Too Many Requests: Rate limit exceeded."
-        )
+        raise HTTPException(status_code=429, detail="Too Many Requests: Rate limit exceeded.")
     rate_limit_records[client_ip].append(now)
 
 
@@ -76,6 +73,7 @@ UI_DIR = Path(__file__).parent
 # Static assets delivery
 # ---------------------------------------------------------------------------
 
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index() -> FileResponse:
     """Serve the primary HTML dashboard."""
@@ -100,12 +98,15 @@ async def serve_js() -> Response:
     js_path = UI_DIR / "index.js"
     if not js_path.exists():
         return Response(content="// JS not found", media_type="application/javascript")
-    return Response(content=js_path.read_text(encoding="utf-8"), media_type="application/javascript")
+    return Response(
+        content=js_path.read_text(encoding="utf-8"), media_type="application/javascript"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Memory REST endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/memory", dependencies=[Depends(rate_limiter)])
 async def list_memories(query: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
@@ -134,7 +135,7 @@ async def list_memories(query: str | None = None, limit: int = 50) -> list[dict[
             return [e.to_dict() for e in entries]
     except Exception as exc:
         logger.exception("Failed to query memories")
-        raise HTTPException(status_code=500, detail=f"Failed to query memories: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to query memories: {exc}") from exc
 
 
 @app.delete("/api/memory/{memory_id}", dependencies=[Depends(rate_limiter)])
@@ -149,12 +150,13 @@ async def delete_memory(memory_id: str) -> dict[str, str]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
 # Task logs REST endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/tasks", dependencies=[Depends(rate_limiter)])
 async def list_tasks() -> list[dict[str, Any]]:
@@ -166,14 +168,16 @@ async def list_tasks() -> list[dict[str, Any]]:
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
                 # Extract simple summary structure
-                sessions.append({
-                    "id": file.stem.replace("session_", ""),
-                    "goal": data.get("goal", ""),
-                    "success": data.get("success", False),
-                    "timestamp": data.get("timestamp", datetime_from_filename(file.name)),
-                    "iterations": data.get("iterations_used", 0),
-                    "elapsed_s": round(data.get("total_elapsed_s", 0.0), 2),
-                })
+                sessions.append(
+                    {
+                        "id": file.stem.replace("session_", ""),
+                        "goal": data.get("goal", ""),
+                        "success": data.get("success", False),
+                        "timestamp": data.get("timestamp", datetime_from_filename(file.name)),
+                        "iterations": data.get("iterations_used", 0),
+                        "elapsed_s": round(data.get("total_elapsed_s", 0.0), 2),
+                    }
+                )
             except Exception:
                 continue
 
@@ -181,13 +185,14 @@ async def list_tasks() -> list[dict[str, Any]]:
         sessions.sort(key=lambda s: s["id"], reverse=True)
         return sessions
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to load task logs: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to load task logs: {exc}") from exc
 
 
 @app.get("/api/tasks/{task_id}", dependencies=[Depends(rate_limiter)])
 async def get_task_details(task_id: str) -> dict[str, Any]:
     """Fetch complete step-by-step logs for a specific task."""
     import re
+
     if not re.match(r"^[a-zA-Z0-9_]+$", task_id):
         raise HTTPException(status_code=400, detail="Invalid task ID format.")
 
@@ -200,7 +205,7 @@ async def get_task_details(task_id: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to read task log: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to read task log: {exc}") from exc
 
 
 def datetime_from_filename(filename: str) -> str:
@@ -219,6 +224,7 @@ def datetime_from_filename(filename: str) -> str:
 # Non-streaming Chat Request
 # ---------------------------------------------------------------------------
 
+
 class ChatRequest(BaseModel):
     message: str
     max_iterations: int | None = None
@@ -230,21 +236,22 @@ async def chat_request(req: ChatRequest) -> dict[str, Any]:
     try:
         # Discover skills in case new ones were added
         registry.discover_skills()
-        
+
         agent = Agent(max_iterations=req.max_iterations)
         result = await run_in_threadpool(agent.run, req.message)
         return result.to_dict()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
 # WebSocket Bidirectional Event Streaming
 # ---------------------------------------------------------------------------
 
+
 @app.websocket("/api/ws/chat")
 async def websocket_chat(websocket: WebSocket) -> None:
-    """ WebSocket chat endpoint streaming intermediate agent thoughts live. """
+    """WebSocket chat endpoint streaming intermediate agent thoughts live."""
     await websocket.accept()
     logger.info("WebSocket connection established.")
 
@@ -253,8 +260,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
     # Callback mapping sync Agent events to async WebSocket send
     def send_socket_event(event_type: str, data: dict[str, Any]) -> None:
         asyncio.run_coroutine_threadsafe(
-            websocket.send_json({"type": event_type, "payload": data}),
-            loop
+            websocket.send_json({"type": event_type, "payload": data}), loop
         )
 
     try:
@@ -268,10 +274,9 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 goal = data
 
             if not goal or not goal.strip():
-                await websocket.send_json({
-                    "type": "agent_error",
-                    "payload": {"error": "Empty prompt received."}
-                })
+                await websocket.send_json(
+                    {"type": "agent_error", "payload": {"error": "Empty prompt received."}}
+                )
                 continue
 
             # Load skills
@@ -282,20 +287,21 @@ async def websocket_chat(websocket: WebSocket) -> None:
             try:
                 # Runs Agent.run in threadpool while events marshal back safely
                 result = await run_in_threadpool(agent.run, goal, send_socket_event)
-                await websocket.send_json({
-                    "type": "agent_done",
-                    "payload": {
-                        "final_answer": result.final_answer,
-                        "success": result.success,
-                        "iterations": result.iterations_used,
+                await websocket.send_json(
+                    {
+                        "type": "agent_done",
+                        "payload": {
+                            "final_answer": result.final_answer,
+                            "success": result.success,
+                            "iterations": result.iterations_used,
+                        },
                     }
-                })
+                )
             except Exception as exc:
                 logger.error("Websocket agent execution failed: %s", exc)
-                await websocket.send_json({
-                    "type": "agent_error",
-                    "payload": {"error": f"Execution error: {exc}"}
-                })
+                await websocket.send_json(
+                    {"type": "agent_error", "payload": {"error": f"Execution error: {exc}"}}
+                )
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected.")

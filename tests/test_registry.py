@@ -14,16 +14,18 @@ Tests cover:
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from core.registry import ToolRegistry, ToolSchema, register_tool, registry
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def fresh_registry() -> ToolRegistry:
@@ -34,6 +36,7 @@ def fresh_registry() -> ToolRegistry:
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 class TestRegistration:
     def test_register_simple_function(self, fresh_registry: ToolRegistry) -> None:
@@ -85,6 +88,7 @@ class TestRegistration:
 # ---------------------------------------------------------------------------
 # Schema generation
 # ---------------------------------------------------------------------------
+
 
 class TestSchemaGeneration:
     def test_required_params_detected(self, fresh_registry: ToolRegistry) -> None:
@@ -144,6 +148,7 @@ class TestSchemaGeneration:
 # ---------------------------------------------------------------------------
 # Lookup and enumeration
 # ---------------------------------------------------------------------------
+
 
 class TestLookupAndEnumeration:
     def test_get_existing_tool(self, fresh_registry: ToolRegistry) -> None:
@@ -212,6 +217,7 @@ class TestLookupAndEnumeration:
 # @register_tool decorator
 # ---------------------------------------------------------------------------
 
+
 class TestDecorator:
     def test_decorator_no_args(self) -> None:
         local_reg = ToolRegistry()
@@ -241,10 +247,13 @@ class TestDecorator:
     def test_decorator_with_args(self) -> None:
         local_reg = ToolRegistry()
 
-        def do_register(destructive: bool = False, description: str = ""):
-            def decorator(fn):
+        def do_register(
+            destructive: bool = False, description: str = ""
+        ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+            def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
                 local_reg.register(fn, destructive=destructive, description=description or None)
                 return fn
+
             return decorator
 
         @do_register(destructive=True, description="Wipes data")
@@ -260,6 +269,7 @@ class TestDecorator:
 # ---------------------------------------------------------------------------
 # Auto-discovery
 # ---------------------------------------------------------------------------
+
 
 class TestAutoDiscovery:
     def test_discover_skills_from_directory(self, fresh_registry: ToolRegistry) -> None:
